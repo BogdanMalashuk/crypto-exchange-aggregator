@@ -30,6 +30,10 @@ DEBUG = True
 
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS").split(",")
 
+SECRETS_FERNET_KEY = os.getenv("SECRETS_FERNET_KEY")
+if not SECRETS_FERNET_KEY:
+    raise RuntimeError("SECRETS_FERNET_KEY is required for ApiKey encryption")
+
 # Application definition
 
 INSTALLED_APPS = [
