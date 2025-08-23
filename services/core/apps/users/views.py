@@ -28,7 +28,7 @@ class ApiKeyListCreateView(generics.ListCreateAPIView):
         try:
             role = user.profile.role
         except ObjectDoesNotExist:
-            raise PermissionDenied("У пользователя отсутствует профиль.")
+            raise PermissionDenied("User has not profile")
 
         if role == "admin":
             return ApiKey.objects.select_related("profile", "profile__user").all()
