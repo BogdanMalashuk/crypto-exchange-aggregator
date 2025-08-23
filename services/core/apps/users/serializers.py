@@ -43,8 +43,8 @@ class ApiKeySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ApiKey
-        fields = ["id", "exchange", "api_key", "api_secret", "created_at"]
-        read_only_fields = ["id", "created_at"]
+        fields = ["id", "exchange", "api_key", "api_secret", "api_secret_masked", "created_at"]
+        read_only_fields = ["id", "created_at", "api_secret_masked"]
 
     @staticmethod
     def get_api_secret_masked(self, obj) -> str:
