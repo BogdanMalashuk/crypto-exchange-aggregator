@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 from pathlib import Path
 import os
 from dotenv import load_dotenv
+from datetime import timedelta
 
 load_dotenv()
 
@@ -153,3 +154,8 @@ EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER'),
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD'),
 EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS'),
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL'),
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(days=7),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+}  # для тестирования чтобы не обновлять постоянно
