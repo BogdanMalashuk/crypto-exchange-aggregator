@@ -41,6 +41,11 @@ class ApiKeyDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        if user.profile.role == "admin":
+        try:
+            role = user.profile.role
+        except ObjectDoesNotExist:
+            raise PermissionDenied("User has not profile")
+
+        if role == "admin":
             return ApiKey.objects.select_related("profile", "profile__user").all()
         return ApiKey.objects.filter(profile=user.profile)
