@@ -159,3 +159,17 @@ SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(days=7),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
 }  # для тестирования чтобы не обновлять постоянно
+
+
+KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092")
+KAFKA_TOPIC_TRADE_PROFIT = os.getenv("KAFKA_TOPIC_TRADE_PROFIT", "trade.profit.detected")
+KAFKA_TOPIC_REPORT_REQUESTED = os.getenv("KAFKA_TOPIC_REPORT_REQUESTED", "report.requested")
+KAFKA_TOPIC_REPORT_COMPLETED = os.getenv("KAFKA_TOPIC_REPORT_COMPLETED", "report.completed")
+KAFKA_TOPIC_DLQ = os.getenv("KAFKA_TOPIC_DLQ", "events.dead")
+
+KAFKA_GROUP_ID = os.getenv("KAFKA_GROUP_ID", "core-consumers")
+KAFKA_CONSUMER_AUTO_OFFSET_RESET = os.getenv("KAFKA_CONSUMER_AUTO_OFFSET_RESET", "earliest")
+KAFKA_IDEMPOTENCY_TTL = int(os.getenv("KAFKA_IDEMPOTENCY_TTL", 24*3600))
+
+
+REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
