@@ -1,35 +1,27 @@
-from contextlib import asynccontextmanager
-from fastapi import FastAPI
 import asyncio
 import logging
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
 from .producer import start_kafka, stop_kafka
-from .exchanges.binance_ws import BinanceWSClient
 from .checker import checker
+from .exchanges.ws_manager import ws_manager
+from .routers import ws as ws_router
 
 logger = logging.getLogger("gateway.main")
-
-BINANCE_SYMBOLS = ["BTCUSDT", "ETHUSDT"]
-
-
-binance_client = BinanceWSClient(symbols=BINANCE_SYMBOLS)
 
 
 @asynccontextmanager
 async def lifespan(application: FastAPI):
-    loop = asyncio.get_event_loop()
-
     await start_kafka(application)
+    logger.info("Kafka started")
 
-    binance_client.start(loop)
-    logger.info("Binance WS client started")
-
-    checker.start(loop)
+    checker.start(asyncio.get_event_loop())
     logger.info("Checker started")
 
     yield
 
     await checker.stop()
-    await binance_client.stop()
+    await ws_manager.stop_all()
     await stop_kafka(application)
 
 
@@ -38,3 +30,4 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.include_router(ws_router.router)
