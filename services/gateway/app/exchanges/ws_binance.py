@@ -1,26 +1,27 @@
-import asyncio
 import json
 import logging
 import websockets
 from urllib.parse import urlencode
+from decimal import Decimal
 from ..price_cache import price_cache
+import asyncio
 
 logger = logging.getLogger("gateway.binance")
 
-BINANCE_WS_BASE = 'wss://stream.binance.com:9443/stream'
+BINANCE_WS_BASE = "wss://stream.binance.com:9443/stream"
 
 
 class BinanceWSClient:
-    def __init__(self, symbols: list[str]):
+    def __init__(self, user_id: int, symbols: list[str]):
+        self.user_id = user_id
         self.symbols = [s.lower() for s in symbols]
-        self._task = None
         self._running = False
 
     def _build_url(self):
         streams = "/".join(f"{s}@trade" for s in self.symbols)
         return f"{BINANCE_WS_BASE}?{urlencode({'streams': streams})}"
 
-    async def _run(self):
+    async def start(self):
         url = self._build_url()
         self._running = True
         while self._running:
@@ -31,25 +32,17 @@ class BinanceWSClient:
                     async for raw in ws:
                         msg = json.loads(raw)
                         data = msg.get("data", {})
-                        price = data.get("p")
+                        price_str = data.get("p")
                         symbol = data.get("s")
-                        if symbol and price:
+                        if symbol and price_str:
+                            price = Decimal(price_str)
                             await price_cache.set_price(symbol, float(price))
             except Exception as e:
-                logger.exception("Binance WS error, reconnecting: %s", e)
-                await asyncio.sleep(5)
+                if self._running:
+                    logger.exception("Binance WS error, reconnecting: %s", e)
+                    await asyncio.sleep(5)
             finally:
                 logger.warning("Disconnected from Binance WS")
 
-    def start(self, loop: asyncio.AbstractEventLoop):
-        if self._task is None:
-            self._task = loop.create_task(self._run())
-
     async def stop(self):
         self._running = False
-        if self._task:
-            self._task.cancel()
-            try:
-                await self._task
-            except asyncio.CancelledError:
-                pass
