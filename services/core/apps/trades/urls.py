@@ -1,8 +1,8 @@
-from django.urls import path
-from .views import lots_view, deactivate_lot, trades_list
+from .views import TradeViewSet
+from rest_framework.routers import DefaultRouter
 
-urlpatterns = [
-    path("lots/", lots_view, name="purchase_lots"),
-    path("lots/<int:lot_id>/deactivate/", deactivate_lot, name="deactivate_purchase_lot"),
-    path("", trades_list, name="trades_list"),
-]
+router = DefaultRouter()
+router.register(r'', TradeViewSet)
+
+urlpatterns = router.urls
+
