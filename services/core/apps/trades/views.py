@@ -22,13 +22,3 @@ class TradeViewSet(viewsets.ModelViewSet):
         if sold is not None:
             qs = qs.filter(sold=(sold.lower() == "true"))
         return qs
-
-    @action(detail=True, methods=["post"])
-    def mark_sold(self, request, pk=None):
-        trade = self.get_object()
-        if trade.sold:
-            return Response({"detail": "Trade already sold"}, status=status.HTTP_400_BAD_REQUEST)
-        trade.sold = True
-        trade.sold_at = timezone.now()
-        trade.save()
-        return Response({"detail": "Trade marked as sold"})
