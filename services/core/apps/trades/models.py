@@ -3,18 +3,23 @@ from apps.users.models import Profile
 
 
 class Trade(models.Model):
-    class Side(models.TextChoices):
-        BUY = "buy", "Buy"
-        SELL = "sell", "Sell"
-
-    profile = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name="trades")
-    exchange = models.CharField(max_length=20)
+    user = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name='trades')
     symbol = models.CharField(max_length=20)
-    side = models.CharField(max_length=10, choices=Side.choices)
-    amount = models.DecimalField(max_digits=20, decimal_places=8)
-    price = models.DecimalField(max_digits=20, decimal_places=8)
-    profit = models.DecimalField(max_digits=20, decimal_places=8, null=True, blank=True)
-    timestamp = models.DateTimeField()
+    quantity = models.DecimalField(max_digits=20, decimal_places=8)
+    buy_price = models.DecimalField(max_digits=20, decimal_places=8)
+    bought_at = models.DateTimeField()
+    sold = models.BooleanField(default=False)
+    sold_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
-        return f"{self.exchange} {self.symbol} {self.side} {self.amount} @ {self.price}"
+        return f"Trade {self.symbol} by {self.user} - {'Sold' if self.sold else 'Open'}"
+
+
+class Sale(models.Model):
+    trade = models.OneToOneField(Trade, on_delete=models.CASCADE, related_name='sale')
+    quantity = models.DecimalField(max_digits=20, decimal_places=8)
+    sell_price = models.DecimalField(max_digits=20, decimal_places=8)
+    profit = models.DecimalField(max_digits=20, decimal_places=8)
+
+    def __str__(self):
+        return f"Sale of {self.trade.symbol} for {self.trade.user}"

@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 from pathlib import Path
 import os
 from dotenv import load_dotenv
+from datetime import timedelta
 
 load_dotenv()
 
@@ -29,6 +30,10 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 DEBUG = True
 
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS").split(",")
+
+SECRETS_FERNET_KEY = os.getenv("SECRETS_FERNET_KEY")
+if not SECRETS_FERNET_KEY:
+    raise RuntimeError("SECRETS_FERNET_KEY is required for ApiKey encryption")
 
 # Application definition
 
@@ -149,3 +154,22 @@ EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER'),
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD'),
 EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS'),
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL'),
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(days=7),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+}  # для тестирования чтобы не обновлять постоянно
+
+
+KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092")
+KAFKA_TOPIC_TRADE_PROFIT = os.getenv("KAFKA_TOPIC_TRADE_PROFIT", "trade.profit.detected")
+KAFKA_TOPIC_REPORT_REQUESTED = os.getenv("KAFKA_TOPIC_REPORT_REQUESTED", "report.requested")
+KAFKA_TOPIC_REPORT_COMPLETED = os.getenv("KAFKA_TOPIC_REPORT_COMPLETED", "report.completed")
+KAFKA_TOPIC_DLQ = os.getenv("KAFKA_TOPIC_DLQ", "events.dead")
+
+KAFKA_GROUP_ID = os.getenv("KAFKA_GROUP_ID", "core-consumers")
+KAFKA_CONSUMER_AUTO_OFFSET_RESET = os.getenv("KAFKA_CONSUMER_AUTO_OFFSET_RESET", "earliest")
+KAFKA_IDEMPOTENCY_TTL = int(os.getenv("KAFKA_IDEMPOTENCY_TTL", 24*3600))
+
+
+REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
