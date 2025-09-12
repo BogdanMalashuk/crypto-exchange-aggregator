@@ -146,19 +146,20 @@ REST_FRAMEWORK = {
     ),
 }
 
-
 EMAIL_BACKEND = os.getenv('EMAIL_BACKEND'),
-EMAIL_HOST = os.getenv('EMAIL_HOST'),
-EMAIL_PORT = os.getenv('EMAIL_PORT'),
-EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER'),
-EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD'),
-EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS'),
-DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL'),
+
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'marketplace.diplom@gmail.com'
+EMAIL_HOST_PASSWORD = 'aatnutopvxyukzqr'
+DEFAULT_FROM_EMAIL = 'marketplace.diplom@gmail.com'
+
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(days=7),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
-}  # для тестирования чтобы не обновлять постоянно
+}
 
 
 KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092")
@@ -173,3 +174,15 @@ KAFKA_IDEMPOTENCY_TTL = int(os.getenv("KAFKA_IDEMPOTENCY_TTL", 24*3600))
 
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
+
+MINIO_ENDPOINT = "http://localhost:9000"
+MINIO_ACCESS_KEY = "minioadmin"
+MINIO_SECRET_KEY = "minioadmin"
+MINIO_BUCKET = "reports"
+
+CELERY_BROKER_URL = "redis://redis:6379/0"
+CELERY_RESULT_BACKEND = "redis://redis:6379/0"
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TIMEZONE = "UTC"
