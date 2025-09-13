@@ -118,9 +118,6 @@ def generate_report(report_id: int):
 
 @shared_task
 def send_report_email(report_id: int, email: str):
-    """
-    Отправка отчёта на e-mail.
-    """
     try:
         report = Report.objects.get(id=report_id)
 
@@ -128,8 +125,12 @@ def send_report_email(report_id: int, email: str):
             logger.warning(f"Report {report.id} is not ready, cannot send email")
             return {"status": "error", "message": "Report not ready"}
 
+        file_key = f"{report.profile.id}/{report.id}.{report.format.lower()}"
+        obj = s3_client.client.get_object(Bucket=s3_client.bucket, Key=file_key)
+        file_content = obj["Body"].read()
+
         subject = f"Your report #{report.id}"
-        body = f"Hello!\n\nYour report is ready.\nDownload link: {report.file_url}\n\nRegards,\nCrypto Analytics System"
+        body = f"Hello!\n\nYour report is ready.\nSee the attachment.\n\nRegards,\nCrypto Analytics System"
 
         message = EmailMessage(
             subject=subject,
@@ -137,9 +138,16 @@ def send_report_email(report_id: int, email: str):
             from_email=settings.DEFAULT_FROM_EMAIL,
             to=[email],
         )
+
+        filename = f"report_{report.id}.{report.format.lower()}"
+        content_type = (
+            "application/pdf" if report.format == Report.Format.PDF else "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+        message.attach(filename, file_content, content_type)
+
         message.send(fail_silently=False)
 
-        logger.info(f"Report {report.id} sent to {email}")
+        logger.info(f"Report {report.id} sent to {email} (with attachment)")
         return {"status": "ok", "report_id": report.id, "email": email}
 
     except Exception as e:
