@@ -29,3 +29,16 @@ class TradeCreatedEvent:
             profit=profit,
             timestamp=datetime.now(timezone.utc).isoformat() + "Z",
         )
+
+
+@dataclass
+class ReportCompletedEvent:
+    report_id: int
+    profile_id: int
+    format: str
+    status: str
+    file_url: str
+    timestamp: str = datetime.now(timezone.utc).isoformat() + "Z"
+
+    def to_dict(self):
+        return asdict(self)
