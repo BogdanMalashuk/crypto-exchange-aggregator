@@ -1,22 +1,12 @@
-from rest_framework import generics, permissions
-from .serializers import RegisterSerializer, ProfileSerializer, ApiKeySerializer
-from .models import ApiKey
-from .permissions import ApiKeyAccessPermission
-from django.core.exceptions import ObjectDoesNotExist
-from rest_framework.exceptions import PermissionDenied
+from rest_framework import generics, permissions, viewsets
+from .serializers import RegisterSerializer, ApiKeySerializer, UserSerializer
+from .models import ApiKey, User
+from .permissions import ApiKeyAccessPermission, UserManagementPermission
 
 
 class RegisterView(generics.CreateAPIView):
     serializer_class = RegisterSerializer
     permission_classes = [permissions.AllowAny]
-
-
-class ProfileView(generics.RetrieveAPIView):
-    serializer_class = ProfileSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get_object(self):
-        return self.request.user.profile
 
 
 class ApiKeyListCreateView(generics.ListCreateAPIView):
@@ -25,14 +15,11 @@ class ApiKeyListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        try:
-            role = user.profile.role
-        except ObjectDoesNotExist:
-            raise PermissionDenied("User has not profile")
+        role = getattr(user, "role", None)
 
         if role == "admin":
-            return ApiKey.objects.select_related("profile", "profile__user").all()
-        return ApiKey.objects.filter(profile=user.profile)
+            return ApiKey.objects.select_related("user").all()
+        return ApiKey.objects.filter(user=user)
 
 
 class ApiKeyDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -41,11 +28,14 @@ class ApiKeyDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        try:
-            role = user.profile.role
-        except ObjectDoesNotExist:
-            raise PermissionDenied("User has not profile")
+        role = getattr(user, "role", None)
 
         if role == "admin":
-            return ApiKey.objects.select_related("profile", "profile__user").all()
-        return ApiKey.objects.filter(profile=user.profile)
+            return ApiKey.objects.select_related("user").all()
+        return ApiKey.objects.filter(user=user)
+
+
+class UserViewSet(viewsets.ModelViewSet):
+    queryset = User.objects.all().order_by("-created_at")
+    serializer_class = UserSerializer
+    permission_classes = [permissions.IsAuthenticated, UserManagementPermission]
