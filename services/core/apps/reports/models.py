@@ -1,5 +1,5 @@
 from django.db import models
-from apps.users.models import Profile
+from apps.users.models import User
 
 
 class Report(models.Model):
@@ -12,7 +12,7 @@ class Report(models.Model):
         PDF = "pdf", "PDF"
         EXCEL = "excel", "Excel"
 
-    profile = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name="reports")
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="reports")
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
     format = models.CharField(max_length=10, choices=Format.choices, default=Format.PDF)
     file_url = models.CharField(max_length=2000, blank=True, null=True)
