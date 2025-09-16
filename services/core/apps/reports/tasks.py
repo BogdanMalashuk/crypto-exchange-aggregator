@@ -17,20 +17,17 @@ logger = logging.getLogger(__name__)
 
 @shared_task
 def generate_report(report_id: int):
-    """
-    Генерация отчёта (PDF/Excel) и загрузка в MinIO.
-    """
     try:
         report = Report.objects.get(id=report_id)
         logger.info(f"Start generating report {report.id} ({report.format})")
 
-        trades = Trade.objects.filter(user=report.profile)
+        trades = Trade.objects.filter(user=report.user)
 
         if report.format == Report.Format.PDF:
             buffer = io.BytesIO()
             p = canvas.Canvas(buffer, pagesize=A4)
             p.setFont("Helvetica", 12)
-            p.drawString(100, 800, f"Report #{report.id} for {report.profile.user.username}")
+            p.drawString(100, 800, f"Report #{report.id} for {report.user.username}")
             y = 760
 
             for trade in trades:
@@ -86,7 +83,7 @@ def generate_report(report_id: int):
         else:
             raise ValueError(f"Unsupported format: {report.format}")
 
-        file_key = f"{report.profile.id}/{report.id}.{file_ext}"
+        file_key = f"{report.user.id}/{report.id}.{file_ext}"
         buffer = io.BytesIO(file_bytes)
         s3_client.upload_file(buffer, file_key)
         logger.info(f"Uploaded file to S3: key={file_key}")
@@ -101,7 +98,7 @@ def generate_report(report_id: int):
 
         event = ReportCompletedEvent(
             report_id=report.id,
-            profile_id=report.profile.id,
+            user_id=report.user.id,
             format=report.format,
             status=report.status,
             file_url=report.file_url,
@@ -125,7 +122,7 @@ def send_report_email(report_id: int, email: str):
             logger.warning(f"Report {report.id} is not ready, cannot send email")
             return {"status": "error", "message": "Report not ready"}
 
-        file_key = f"{report.profile.id}/{report.id}.{report.format.lower()}"
+        file_key = f"{report.user.id}/{report.id}.{report.format.lower()}"
         obj = s3_client.client.get_object(Bucket=s3_client.bucket, Key=file_key)
         file_content = obj["Body"].read()
 
