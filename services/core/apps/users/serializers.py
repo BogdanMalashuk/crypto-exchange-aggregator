@@ -1,6 +1,6 @@
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
-from .models import User, Profile, ApiKey
+from .models import User, ApiKey
 from .crypto import encrypt_text, decrypt_text
 from django.db import IntegrityError
 
@@ -16,26 +16,36 @@ class RegisterSerializer(serializers.ModelSerializer):
         user = User(
             email=validated_data["email"],
             username=validated_data["username"],
+            role=User.Role.USER,
         )
         user.set_password(validated_data["password"])
         user.save()
-        Profile.objects.create(user=user)
-
         return user
 
 
 class UserSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True, required=False)
+
     class Meta:
         model = User
-        fields = ["id", "email", "username"]
+        fields = ["id", "email", "username", "role", "password"]
+        read_only_fields = ["id", "created_at"]
 
+    def create(self, validated_data):
+        password = validated_data.pop("password", None)
+        user = User(**validated_data)
+        user.set_password(password)
+        user.save()
+        return user
 
-class ProfileSerializer(serializers.ModelSerializer):
-    user = UserSerializer(read_only=True)
-
-    class Meta:
-        model = Profile
-        fields = ["id", "user", "role", "created_at"]
+    def update(self, instance, validated_data):
+        password = validated_data.pop("password", None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        if password:
+            instance.set_password(password)
+        instance.save()
+        return instance
 
 
 class ApiKeySerializer(serializers.ModelSerializer):
@@ -44,7 +54,7 @@ class ApiKeySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ApiKey
-        fields = ["id", "exchange", "api_key", "api_secret", "api_secret_masked", "created_at"]
+        fields = ["id", "exchange", "api_key", "api_secret", "api_secret_masked"]
         read_only_fields = ["id", "created_at", "api_secret_masked"]
 
     def get_api_secret_masked(self, obj) -> str:
@@ -53,18 +63,18 @@ class ApiKeySerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         request = self.context["request"]
-        profile = request.user.profile
+        user = request.user
         raw_secret = validated_data.pop("api_secret")
         encrypted_secret = encrypt_text(raw_secret)
         try:
             instance = ApiKey.objects.create(
-                profile=profile,
+                user=user,
                 api_secret=encrypted_secret,
                 **validated_data
             )
         except IntegrityError:
             raise serializers.ValidationError(
-                {"exchange": "API key for this exchange already exists for your profile."}
+                {"exchange": "API key for this exchange already exists for your user."}
             )
         return instance
 
@@ -78,6 +88,6 @@ class ApiKeySerializer(serializers.ModelSerializer):
             instance.save()
         except IntegrityError:
             raise serializers.ValidationError(
-                {"exchange": "API key for this exchange already exists for your profile."}
+                {"exchange": "API key for this exchange already exists for your user."}
             )
         return instance
