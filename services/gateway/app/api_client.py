@@ -1,16 +1,17 @@
 import httpx
 import logging
 from typing import Optional, List, Dict, Any
+from .auth.jwt_client import jwt_client
 
 logger = logging.getLogger("gateway.api_client")
 
-DJANGO = "http://127.0.0.1:8001"    
-JWT_TOKEN = ("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU3NTM5NDA0LCJpYXQiOjE3NTY5MzQ2MDQsImp0aSI6IjliMTRlZjZjMmNlNTQxOTRhOTMyNDI5MDYwNGIxZjk4IiwidXNlcl9pZCI6IjIifQ.WoDG_wLRUfI5vfTekElAL-G8Ax3UTWU43LoOMePRb6g")
+DJANGO_URL = "http://127.0.0.1:8001"
 
 
 async def get_trades(user_id: Optional[int] = None, symbol: Optional[str] = None, sold: Optional[bool] = None) -> List[Dict[str, Any]]:
-    url = f"{DJANGO}/trades/"
-    headers = {"Authorization": f"Bearer {JWT_TOKEN}"} if JWT_TOKEN else {}
+    url = f"{DJANGO_URL}/trades/"
+    access_token = await jwt_client.get_access_token()
+    headers = {"Authorization": f"Bearer {access_token}"}
     params = {}
     if user_id is not None:
         params["user_id"] = user_id
