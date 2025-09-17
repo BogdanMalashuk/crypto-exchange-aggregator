@@ -4,7 +4,7 @@ from typing import Optional, List, Dict, Any
 
 logger = logging.getLogger("gateway.api_client")
 
-DJANGO = "http://127.0.0.1:8001"
+DJANGO = "http://127.0.0.1:8001"    
 JWT_TOKEN = ("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU3NTM5NDA0LCJpYXQiOjE3NTY5MzQ2MDQsImp0aSI6IjliMTRlZjZjMmNlNTQxOTRhOTMyNDI5MDYwNGIxZjk4IiwidXNlcl9pZCI6IjIifQ.WoDG_wLRUfI5vfTekElAL-G8Ax3UTWU43LoOMePRb6g")
 
 
