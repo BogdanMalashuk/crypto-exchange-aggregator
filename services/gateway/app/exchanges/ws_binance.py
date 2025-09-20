@@ -6,8 +6,13 @@ from decimal import Decimal
 from ..price_cache import price_cache
 import asyncio
 
-logger = logging.getLogger("gateway.binance")
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s"
+)
+
+logger = logging.getLogger("gateway.binance")
 BINANCE_WS_BASE = "wss://stream.binance.com:9443/stream"
 
 
@@ -26,9 +31,8 @@ class BinanceWSClient:
         self._running = True
         while self._running:
             try:
-                logger.info("Connecting to Binance WS: %s", url)
                 async with websockets.connect(url, ping_interval=20) as ws:
-                    logger.info("Connected to Binance WS")
+                    logger.info("Connected to Binance WS: %s", url)
                     async for raw in ws:
                         msg = json.loads(raw)
                         data = msg.get("data", {})
@@ -39,10 +43,10 @@ class BinanceWSClient:
                             await price_cache.set_price(symbol, float(price))
             except Exception as e:
                 if self._running:
-                    logger.exception("Binance WS error, reconnecting: %s", e)
+                    logger.info("Binance WS error, reconnecting: %s", e)
                     await asyncio.sleep(5)
             finally:
-                logger.warning("Disconnected from Binance WS")
+                logger.info("Disconnected from Binance WS")
 
     async def stop(self):
         self._running = False
