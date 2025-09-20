@@ -5,7 +5,12 @@ from .models import Report
 class ReportCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Report
-        fields = ["user", "format"]
+        fields = ["format", "symbol"]
+
+    def create(self, validated_data):
+        request = self.context.get("request")
+        validated_data["user"] = request.user
+        return super().create(validated_data)
 
 
 class ReportSerializer(serializers.ModelSerializer):
