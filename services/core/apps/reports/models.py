@@ -15,6 +15,7 @@ class Report(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="reports")
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
     format = models.CharField(max_length=10, choices=Format.choices, default=Format.PDF)
+    symbol = models.CharField(max_length=50)
     file_url = models.CharField(max_length=2000, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
