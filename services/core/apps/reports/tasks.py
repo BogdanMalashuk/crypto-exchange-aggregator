@@ -4,6 +4,7 @@ from celery import shared_task
 from django.conf import settings
 from .models import Report
 from apps.trades.models import Trade
+from apps.users.models import User
 from packages.common.s3.client import s3_client
 from django.core.mail import EmailMessage
 from reportlab.pdfgen import canvas
@@ -21,13 +22,16 @@ def generate_report(report_id: int):
         report = Report.objects.get(id=report_id)
         logger.info(f"Start generating report {report.id} ({report.format})")
 
-        trades = Trade.objects.filter(user=report.user)
+        if report.user.role == User.Role.USER:
+            trades = Trade.objects.filter(user=report.user, symbol=report.symbol)
+        else:
+            trades = Trade.objects.filter(symbol=report.symbol)
 
         if report.format == Report.Format.PDF:
             buffer = io.BytesIO()
             p = canvas.Canvas(buffer, pagesize=A4)
             p.setFont("Helvetica", 12)
-            p.drawString(100, 800, f"Report #{report.id} for {report.user.username}")
+            p.drawString(100, 800, f"Report #{report.id}, symbol={report.symbol})")
             y = 760
 
             for trade in trades:
@@ -49,13 +53,12 @@ def generate_report(report_id: int):
         elif report.format == Report.Format.EXCEL:
             wb = openpyxl.Workbook()
             ws = wb.active
-            ws.title = "Trades"
-            ws.append(["Symbol", "Quantity", "Buy price", "Bought at", "Sold", "Sell price", "Profit"])
+            ws.title = f"Trades {report.symbol}"
+            ws.append(["Quantity", "Buy price", "Bought at", "Sold", "Sell price", "Profit"])
 
             for trade in trades:
                 if trade.sold and hasattr(trade, "sale"):
                     ws.append([
-                        trade.symbol,
                         float(trade.quantity),
                         float(trade.buy_price),
                         trade.bought_at.isoformat(),
@@ -83,7 +86,7 @@ def generate_report(report_id: int):
         else:
             raise ValueError(f"Unsupported format: {report.format}")
 
-        file_key = f"{report.user.id}/{report.id}.{file_ext}"
+        file_key = f"{report.id}.{file_ext}"
         buffer = io.BytesIO(file_bytes)
         s3_client.upload_file(buffer, file_key)
         logger.info(f"Uploaded file to S3: key={file_key}")
@@ -122,7 +125,7 @@ def send_report_email(report_id: int, email: str):
             logger.warning(f"Report {report.id} is not ready, cannot send email")
             return {"status": "error", "message": "Report not ready"}
 
-        file_key = f"{report.user.id}/{report.id}.{report.format.lower()}"
+        file_key = f"{report.id}.{report.format.lower()}"
         obj = s3_client.client.get_object(Bucket=s3_client.bucket, Key=file_key)
         file_content = obj["Body"].read()
 
