@@ -12,7 +12,6 @@ logger = logging.getLogger("gateway.main")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # --- startup ---
     logger.info("Starting services...")
 
     await price_cache.start()
@@ -22,7 +21,6 @@ async def lifespan(app: FastAPI):
     logger.info("All services started")
     yield
 
-    # --- shutdown ---
     logger.info("Stopping services...")
 
     await ws_manager.stop_all()
@@ -36,6 +34,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 app.include_router(ws.router)
+
 
 @app.get("/health")
 async def health():
