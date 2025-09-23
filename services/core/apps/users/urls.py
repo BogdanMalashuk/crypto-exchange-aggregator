@@ -1,7 +1,8 @@
-from django.urls import path, include
+from django.urls import path
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from .views import RegisterView, ApiKeyListCreateView, ApiKeyDetailView, UserViewSet
+from .views import PasswordResetView, PasswordResetConfirmView
 
 router = DefaultRouter()
 router.register(r'users', UserViewSet, basename='user')
@@ -13,6 +14,9 @@ urlpatterns = [
 
     path("keys/", ApiKeyListCreateView.as_view(), name="apikey-list-create"),
     path("keys/<int:pk>/", ApiKeyDetailView.as_view(), name="apikey-detail"),
+
+    path("auth/password-reset/", PasswordResetView.as_view(), name="password_reset"),
+    path("auth/password-reset-confirm/", PasswordResetConfirmView.as_view(), name="password_reset_confirm"),
 ]
 
 urlpatterns += router.urls
