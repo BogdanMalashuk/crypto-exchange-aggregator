@@ -42,3 +42,14 @@ class ReportCompletedEvent:
 
     def to_dict(self):
         return asdict(self)
+
+
+@dataclass
+class ReportRequestedEvent:
+    report_id: int
+    user_id: int
+    format: str
+    symbol: str
+
+    def to_dict(self):
+        return asdict(self)
