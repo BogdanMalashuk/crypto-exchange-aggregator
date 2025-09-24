@@ -4,6 +4,8 @@ from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404
 from apps.users.models import User
+from packages.common.kafka.events import ReportRequestedEvent
+from .kafka import send_kafka_event
 from .models import Report
 from .serializers import ReportCreateSerializer, SendEmailSerializer
 from .tasks import generate_report, send_report_email
@@ -14,6 +16,15 @@ class ReportViewSet(viewsets.ViewSet):
         serializer = ReportCreateSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         report = serializer.save()
+
+        event = ReportRequestedEvent(
+            report_id=report.id,
+            user_id=report.user.id,
+            format=report.format,
+            symbol=report.symbol,
+        )
+        send_kafka_event("report.requested", event.to_dict())
+
         generate_report.delay(report.id)
 
         return Response(
