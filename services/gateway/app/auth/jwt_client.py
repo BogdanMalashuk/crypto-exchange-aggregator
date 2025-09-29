@@ -1,14 +1,17 @@
+import os
 import httpx
 import asyncio
 import logging
 from datetime import datetime, timedelta
 from typing import Optional
+from dotenv import load_dotenv
 
+load_dotenv()
 logger = logging.getLogger("gateway.jwt_client")
 
-DJANGO_URL = "http://127.0.0.1:8001"
-SERVICE_EMAIL = "service@service.com"
-SERVICE_PASSWORD = "testpassword"
+DJANGO_URL = os.getenv('DJANGO_URL')
+SERVICE_EMAIL = os.getenv('SERVICE_EMAIL')
+SERVICE_PASSWORD = os.getenv('SERVICE_PASSWORD')
 
 
 class JWTClient:
@@ -56,7 +59,7 @@ class JWTClient:
             if (
                 self._access_token is None
                 or self._expires_at is None
-                or datetime.utcnow() >= self._expires_at
+                or datetime.now() >= self._expires_at
             ):
                 if not await self._refresh():
                     await self._login()

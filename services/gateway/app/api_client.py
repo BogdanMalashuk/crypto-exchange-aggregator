@@ -1,11 +1,14 @@
+import os
 import httpx
 import logging
 from typing import Optional, List, Dict, Any
 from .auth.jwt_client import jwt_client
+from dotenv import load_dotenv
 
+load_dotenv()
 logger = logging.getLogger("gateway.api_client")
 
-DJANGO_URL = "http://127.0.0.1:8001"
+DJANGO_URL = os.getenv('DJANGO_URL')
 
 
 async def get_trades(user_id: Optional[int] = None, symbol: Optional[str] = None, sold: Optional[bool] = None) -> List[Dict[str, Any]]:

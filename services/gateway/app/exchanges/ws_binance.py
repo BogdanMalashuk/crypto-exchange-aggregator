@@ -5,6 +5,10 @@ from urllib.parse import urlencode
 from decimal import Decimal
 from ..price_cache import price_cache
 import asyncio
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 logging.basicConfig(
@@ -13,7 +17,7 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger("gateway.binance")
-BINANCE_WS_BASE = "wss://stream.binance.com:9443/stream"
+BINANCE_WS_BASE = os.getenv('BINANCE_WS_BASE')
 
 
 class BinanceWSClient:

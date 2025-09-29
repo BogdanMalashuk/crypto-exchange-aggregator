@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import websockets
 from urllib.parse import urlencode
 from decimal import Decimal
@@ -7,10 +8,12 @@ from ..price_cache import price_cache
 from ..api_client import get_trades
 from ..producer import send_profit_trade_event
 import asyncio
+from dotenv import load_dotenv
 
+load_dotenv()
 logger = logging.getLogger("gateway.bybit")
 
-BYBIT_WS_BASE = "wss://stream.bybit.com/realtime"
+BYBIT_WS_BASE = os.getenv('BYBIT_WS_BASE')
 
 
 class BybitWSClient:

@@ -3,15 +3,22 @@ import logging
 from kafka import KafkaConsumer
 from django.conf import settings
 import redis
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 logger = logging.getLogger(__name__)
+
+KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS")
 
 
 class BaseKafkaConsumer:
     def __init__(self, topics, group_id=None, bootstrap_servers=None):
         self.topics = topics if isinstance(topics, list) else [topics]
         self.group_id = group_id or settings.KAFKA_GROUP_ID
-        self.bootstrap_servers = bootstrap_servers or settings.KAFKA_BOOTSTRAP_SERVERS.split(",")
+        self.bootstrap_servers=[KAFKA_BOOTSTRAP_SERVERS],
+
         self.redis = redis.from_url(settings.REDIS_URL)
         self.consumer = KafkaConsumer(
             *self.topics,

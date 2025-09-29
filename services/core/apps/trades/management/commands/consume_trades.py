@@ -7,20 +7,24 @@ from django.db import transaction
 from django.utils import timezone
 from aiokafka import AIOKafkaConsumer
 from apps.trades.models import Trade, Sale
-from apps.trades.exchanges.binance_order import create_sell_order
+# from apps.trades.exchanges.binance_order import create_sell_order
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 logger = logging.getLogger("core.kafka_consumer")
 
-KAFKA_BOOTSTRAP_SERVERS = "localhost:9092"
-TOPIC = "trade.profit.detected"
-GROUP_ID = "trade_profit_consumer_group"
+
+KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS")
+TOPIC = os.getenv("KAFKA_TOPIC_TRADE_PROFIT")
+GROUP_ID = os.getenv("KAFKA_GROUP_ID")
 
 
 class Command(BaseCommand):
     help = "Consume trade profit events from Kafka (async, thread-safe DB + external call)"
 
     def handle(self, *args, **options):
-        # Запускаем async loop
         asyncio.run(self.consume())
 
     async def consume(self):
@@ -30,7 +34,7 @@ class Command(BaseCommand):
             group_id=GROUP_ID,
             value_deserializer=lambda m: json.loads(m.decode("utf-8")),
             auto_offset_reset="earliest",
-            enable_auto_commit=False,  # ручной коммит после успешной обработки
+            enable_auto_commit=False,
         )
         await consumer.start()
         logger.info("Started async Kafka consumer for %s", TOPIC)
@@ -46,7 +50,6 @@ class Command(BaseCommand):
 
                 if processed:
                     try:
-                        # commit offsets only after successful processing
                         await consumer.commit()
                     except Exception as e:
                         logger.error("Failed to commit offsets: %s", e)
@@ -55,11 +58,6 @@ class Command(BaseCommand):
             logger.info("Kafka consumer stopped")
 
     async def process_message(self, data) -> bool:
-        """
-        Основная асинхронная обёртка: парсим данные, выполняем
-        синхронную work (DB + вызов биржи) в thread через asyncio.to_thread.
-        Возвращаем True при успешной обработке (тогда коммитим оффсет).
-        """
         trade_id = data.get("trade_id")
         symbol = data.get("symbol")
         quantity_str = data.get("quantity")
@@ -82,7 +80,6 @@ class Command(BaseCommand):
             logger.info("Quantity <= 0, skipping trade %s", trade_id)
             return False
 
-        # Выполним всю "тяжёлую" синхронную логику в отдельном потоке:
         try:
             result = await asyncio.to_thread(
                 self._process_db_and_create_order,
@@ -94,11 +91,6 @@ class Command(BaseCommand):
             return False
 
     def _process_db_and_create_order(self, trade_id, symbol, quantity, buy_price, sell_price) -> bool:
-        """
-        Синхронный код: выполняется в отдельном потоке (через to_thread).
-        Использует transaction.atomic и Django ORM как раньше.
-        Возвращает True если успешно создали ордер и записали Sale + пометили trade как sold.
-        """
         try:
             with transaction.atomic():
                 try:
@@ -111,12 +103,12 @@ class Command(BaseCommand):
                     logger.info("Trade %s already sold", trade_id)
                     return False
 
-                try:
-                    order = create_sell_order(symbol, float(quantity))
-                    logger.info("Binance sell order created for trade %s: %s", trade_id, order)
-                except Exception as e:
-                    logger.error("Sell order failed for trade %s: %s", trade_id, e, exc_info=True)
-                    return False
+                # try:
+                #     order = create_sell_order(symbol, float(quantity))
+                #     logger.info("Binance sell order created for trade %s: %s", trade_id, order)
+                # except Exception as e:
+                #     logger.error("Sell order failed for trade %s: %s", trade_id, e, exc_info=True)
+                #     return False
 
                 profit = (sell_price - buy_price) * quantity
                 Sale.objects.create(
