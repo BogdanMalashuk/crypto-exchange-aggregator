@@ -1,7 +1,8 @@
 import io
 import logging
 from celery import shared_task
-from django.conf import settings
+import os
+from django.core.mail import EmailMessage, get_connection
 from .models import Report
 from apps.trades.models import Trade
 from apps.users.models import User
@@ -91,7 +92,11 @@ def generate_report(report_id: int):
         s3_client.upload_file(buffer, file_key)
         logger.info(f"Uploaded file to S3: key={file_key}")
 
-        file_url = s3_client.get_file_url(file_key, expires_in=3600*24)
+        file_url = s3_client.get_file_url(
+            file_key,
+            expires_in=3600 * 24,
+            response_content_disposition='attachment'
+        )
 
         report.status = Report.Status.READY
         report.file_url = file_url
@@ -129,19 +134,39 @@ def send_report_email(report_id: int, email: str):
         obj = s3_client.client.get_object(Bucket=s3_client.bucket, Key=file_key)
         file_content = obj["Body"].read()
 
+        smtp_user = os.getenv("EMAIL_HOST_USER")
+        smtp_password = os.getenv("EMAIL_HOST_PASSWORD")
+        smtp_host = os.getenv("EMAIL_HOST", "smtp.gmail.com")
+        smtp_port = int(os.getenv("EMAIL_PORT", 587))
+        use_tls = os.getenv("EMAIL_USE_TLS", "True").lower() in ("true", "1", "yes")
+        from_email = os.getenv("DEFAULT_FROM_EMAIL", smtp_user)
+
+        connection = get_connection(
+            host=smtp_host,
+            port=smtp_port,
+            username=smtp_user,
+            password=smtp_password,
+            use_tls=use_tls
+        )
+
         subject = f"Your report #{report.id}"
-        body = f"Hello!\n\nYour report is ready.\nSee the attachment.\n\nRegards,\nCrypto Analytics System"
+        body = (
+            f"Hello!\n\nYour report is ready.\n"
+            f"See the attachment.\n\nRegards,\nCrypto Analytics System"
+        )
 
         message = EmailMessage(
             subject=subject,
             body=body,
-            from_email=settings.DEFAULT_FROM_EMAIL,
+            from_email=from_email,
             to=[email],
+            connection=connection
         )
 
         filename = f"report_{report.id}.{report.format.lower()}"
         content_type = (
-            "application/pdf" if report.format == Report.Format.PDF else "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            "application/pdf" if report.format == "PDF"
+            else "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
         message.attach(filename, file_content, content_type)
 
@@ -152,4 +177,4 @@ def send_report_email(report_id: int, email: str):
 
     except Exception as e:
         logger.exception(f"Failed to send report {report_id} to {email}: {e}")
-        return {"status": "error", "report_id": report_id, "error": str(e)}
+        return {"status": "error", "report_id": report.id, "error": str(e)}
