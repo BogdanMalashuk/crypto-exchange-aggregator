@@ -1,12 +1,15 @@
 import asyncio
 import json
 import logging
+import os
 from aiokafka import AIOKafkaProducer
+from dotenv import load_dotenv
 
+load_dotenv()
 logger = logging.getLogger("gateway.kafka_producer")
 
-KAFKA_BOOTSTRAP_SERVERS = "localhost:9092"
-TOPIC = "trade.profit.detected"
+KAFKA_BOOTSTRAP_SERVERS = os.getenv('KAFKA_BOOTSTRAP_SERVERS')
+TOPIC = os.getenv('KAFKA_TOPIC_TRADE_PROFIT')
 MAX_RETRIES = 5
 RETRY_BASE_DELAY = 1
 
@@ -20,7 +23,7 @@ class KafkaProducer:
         async with self._lock:
             if self._producer is None:
                 self._producer = AIOKafkaProducer(
-                    bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
+                    bootstrap_servers=[KAFKA_BOOTSTRAP_SERVERS],
                     value_serializer=lambda v: json.dumps(v).encode('utf-8')
                 )
                 await self._producer.start()

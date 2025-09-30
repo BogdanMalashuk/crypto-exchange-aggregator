@@ -1,0 +1,180 @@
+import io
+import logging
+from celery import shared_task
+import os
+from django.core.mail import EmailMessage, get_connection
+from .models import Report
+from apps.trades.models import Trade
+from apps.users.models import User
+from packages.common.s3.client import s3_client
+from django.core.mail import EmailMessage
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import A4
+import openpyxl
+from .kafka import send_kafka_event
+from packages.common.kafka.events import ReportCompletedEvent
+
+logger = logging.getLogger(__name__)
+
+
+@shared_task
+def generate_report(report_id: int):
+    try:
+        report = Report.objects.get(id=report_id)
+        logger.info(f"Start generating report {report.id} ({report.format})")
+
+        if report.user.role == User.Role.USER:
+            trades = Trade.objects.filter(user=report.user, symbol=report.symbol)
+        else:
+            trades = Trade.objects.filter(symbol=report.symbol)
+
+        if report.format == Report.Format.PDF:
+            buffer = io.BytesIO()
+            p = canvas.Canvas(buffer, pagesize=A4)
+            p.setFont("Helvetica", 12)
+            p.drawString(100, 800, f"Report #{report.id}, symbol={report.symbol})")
+            y = 760
+
+            for trade in trades:
+                line = f"{trade.symbol} | qty={trade.quantity} | buy={trade.buy_price}"
+                if trade.sold and hasattr(trade, "sale"):
+                    line += f" | sell={trade.sale.sell_price} | profit={trade.sale.profit}"
+                else:
+                    line += " | OPEN"
+                p.drawString(100, y, line)
+                y -= 20
+                if y < 50:
+                    p.showPage()
+                    y = 800
+            p.save()
+            buffer.seek(0)
+            file_bytes = buffer.getvalue()
+            file_ext = "pdf"
+
+        elif report.format == Report.Format.EXCEL:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = f"Trades {report.symbol}"
+            ws.append(["Quantity", "Buy price", "Bought at", "Sold", "Sell price", "Profit"])
+
+            for trade in trades:
+                if trade.sold and hasattr(trade, "sale"):
+                    ws.append([
+                        float(trade.quantity),
+                        float(trade.buy_price),
+                        trade.bought_at.isoformat(),
+                        "YES",
+                        float(trade.sale.sell_price),
+                        float(trade.sale.profit),
+                    ])
+                else:
+                    ws.append([
+                        trade.symbol,
+                        float(trade.quantity),
+                        float(trade.buy_price),
+                        trade.bought_at.isoformat(),
+                        "NO",
+                        None,
+                        None,
+                    ])
+
+            buffer = io.BytesIO()
+            wb.save(buffer)
+            buffer.seek(0)
+            file_bytes = buffer.getvalue()
+            file_ext = "xlsx"
+
+        else:
+            raise ValueError(f"Unsupported format: {report.format}")
+
+        file_key = f"{report.id}.{file_ext}"
+        buffer = io.BytesIO(file_bytes)
+        s3_client.upload_file(buffer, file_key)
+        logger.info(f"Uploaded file to S3: key={file_key}")
+
+        file_url = s3_client.get_file_url(
+            file_key,
+            expires_in=3600 * 24,
+            response_content_disposition='attachment'
+        )
+
+        report.status = Report.Status.READY
+        report.file_url = file_url
+        report.save(update_fields=["status", "file_url"])
+
+        logger.info(f"Report {report.id} generated successfully")
+
+        event = ReportCompletedEvent(
+            report_id=report.id,
+            user_id=report.user.id,
+            format=report.format,
+            status=report.status,
+            file_url=report.file_url,
+        )
+        send_kafka_event("report.completed", event.to_dict())
+
+        return {"status": "ok", "report_id": report.id, "url": file_url}
+
+    except Exception as e:
+        logger.exception(f"Failed to generate report {report_id}: {e}")
+        Report.objects.filter(id=report_id).update(status=Report.Status.FAILED)
+        return {"status": "error", "report_id": report_id, "error": str(e)}
+
+
+@shared_task
+def send_report_email(report_id: int, email: str):
+    try:
+        report = Report.objects.get(id=report_id)
+
+        if not report.is_ready or not report.file_url:
+            logger.warning(f"Report {report.id} is not ready, cannot send email")
+            return {"status": "error", "message": "Report not ready"}
+
+        file_key = f"{report.id}.{report.format.lower()}"
+        obj = s3_client.client.get_object(Bucket=s3_client.bucket, Key=file_key)
+        file_content = obj["Body"].read()
+
+        smtp_user = os.getenv("EMAIL_HOST_USER")
+        smtp_password = os.getenv("EMAIL_HOST_PASSWORD")
+        smtp_host = os.getenv("EMAIL_HOST", "smtp.gmail.com")
+        smtp_port = int(os.getenv("EMAIL_PORT", 587))
+        use_tls = os.getenv("EMAIL_USE_TLS", "True").lower() in ("true", "1", "yes")
+        from_email = os.getenv("DEFAULT_FROM_EMAIL", smtp_user)
+
+        connection = get_connection(
+            host=smtp_host,
+            port=smtp_port,
+            username=smtp_user,
+            password=smtp_password,
+            use_tls=use_tls
+        )
+
+        subject = f"Your report #{report.id}"
+        body = (
+            f"Hello!\n\nYour report is ready.\n"
+            f"See the attachment.\n\nRegards,\nCrypto Analytics System"
+        )
+
+        message = EmailMessage(
+            subject=subject,
+            body=body,
+            from_email=from_email,
+            to=[email],
+            connection=connection
+        )
+
+        filename = f"report_{report.id}.{report.format.lower()}"
+        content_type = (
+            "application/pdf" if report.format == "PDF"
+            else "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+        message.attach(filename, file_content, content_type)
+
+        message.send(fail_silently=False)
+
+        logger.info(f"Report {report.id} sent to {email} (with attachment)")
+        return {"status": "ok", "report_id": report.id, "email": email}
+
+    except Exception as e:
+        logger.exception(f"Failed to send report {report_id} to {email}: {e}")
+        return {"status": "error", "report_id": report.id, "error": str(e)}

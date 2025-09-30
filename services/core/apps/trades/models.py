@@ -1,9 +1,9 @@
 from django.db import models
-from apps.users.models import Profile
+from apps.users.models import User
 
 
 class Trade(models.Model):
-    user = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name='trades')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='trades')
     symbol = models.CharField(max_length=20)
     quantity = models.DecimalField(max_digits=20, decimal_places=8)
     buy_price = models.DecimalField(max_digits=20, decimal_places=8)

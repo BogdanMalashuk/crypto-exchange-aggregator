@@ -1,12 +1,15 @@
 import asyncio
 import logging
+import os
 from decimal import Decimal
 from typing import Dict, Optional
 import aiohttp
+from dotenv import load_dotenv
 
+load_dotenv()
 logger = logging.getLogger("gateway.price_cache")
 
-BINANCE_REST_BASE = "https://api.binance.com/api/v3/ticker/price"
+BINANCE_REST_BASE = os.getenv('BINANCE_REST_BASE')
 UPDATE_INTERVAL = 30  # сек
 
 
@@ -19,13 +22,11 @@ class PriceCache:
         self.symbols = [s.upper() for s in symbols] if symbols else []
 
     async def start(self):
-        """Запуск фонового обновления цен через REST"""
         if not self._task:
             self._task = asyncio.create_task(self._update_prices_rest())
             logger.info("PriceCache updater started")
 
     async def stop(self):
-        """Остановка фонового обновления"""
         self._running = False
         if self._task:
             await self._task
@@ -33,7 +34,6 @@ class PriceCache:
             logger.info("PriceCache updater stopped")
 
     async def _update_prices_rest(self):
-        """Фоновая задача обновления цен с Binance REST API"""
         self._running = True
         while self._running:
             try:
@@ -64,16 +64,11 @@ class PriceCache:
                 await asyncio.sleep(5)
 
     async def set_price(self, symbol: str, price: float):
-        """Установить цену в кэш"""
         symbol = symbol.upper()
         async with self._lock:
             self._prices[symbol] = {"price": Decimal(str(price))}
 
     async def get_price(self, symbol: str, wait_if_missing: bool = True) -> Optional[Decimal]:
-        """
-        Получить цену из кэша.
-        Если wait_if_missing=True и цены нет, ждём до 1 секунды, чтобы REST успел обновить.
-        """
         symbol = symbol.upper()
         async with self._lock:
             item = self._prices.get(symbol)
@@ -89,5 +84,4 @@ class PriceCache:
         return None
 
 
-# Глобальный кэш цен
 price_cache = PriceCache()

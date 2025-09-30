@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 
 @dataclass
 class TradeCreatedEvent:
-    profile_id: int
+    user_id: int
     exchange: str
     symbol: str
     amount: float
@@ -17,10 +17,10 @@ class TradeCreatedEvent:
         return asdict(self)
 
     @classmethod
-    def from_trade(cls, profile_id, exchange, symbol, amount, buy_price, current_price):
+    def from_trade(cls, user_id, exchange, symbol, amount, buy_price, current_price):
         profit = (current_price - buy_price) * amount
         return cls(
-            profile_id=profile_id,
+            user_id=user_id,
             exchange=exchange,
             symbol=symbol,
             amount=amount,
@@ -29,3 +29,27 @@ class TradeCreatedEvent:
             profit=profit,
             timestamp=datetime.now(timezone.utc).isoformat() + "Z",
         )
+
+
+@dataclass
+class ReportCompletedEvent:
+    report_id: int
+    user_id: int
+    format: str
+    status: str
+    file_url: str
+    timestamp: str = datetime.now(timezone.utc).isoformat() + "Z"
+
+    def to_dict(self):
+        return asdict(self)
+
+
+@dataclass
+class ReportRequestedEvent:
+    report_id: int
+    user_id: int
+    format: str
+    symbol: str
+
+    def to_dict(self):
+        return asdict(self)

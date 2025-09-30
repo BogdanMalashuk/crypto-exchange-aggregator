@@ -84,13 +84,13 @@ WSGI_APPLICATION = 'core.wsgi.application'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('DB_NAME'),
-        'USER': os.getenv('DB_USER'),
-        'PASSWORD': os.getenv('DB_PASSWORD'),
-        'HOST': os.getenv('DB_HOST'),
-        'PORT': os.getenv('DB_PORT'),
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.getenv("DB_NAME"),
+        "USER": os.getenv("DB_USER"),
+        "PASSWORD": os.getenv("DB_PASSWORD"),
+        "HOST": os.getenv("DB_HOST", "localhost"),
+        "PORT": os.getenv("DB_PORT", "5432"),
     }
 }
 
@@ -98,18 +98,10 @@ DATABASES = {
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
 
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
+    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
+    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
 
@@ -146,30 +138,42 @@ REST_FRAMEWORK = {
     ),
 }
 
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = "smtp.gmail.com"
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL")
 
-EMAIL_BACKEND = os.getenv('EMAIL_BACKEND'),
-EMAIL_HOST = os.getenv('EMAIL_HOST'),
-EMAIL_PORT = os.getenv('EMAIL_PORT'),
-EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER'),
-EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD'),
-EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS'),
-DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL'),
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(days=7),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
-}  # для тестирования чтобы не обновлять постоянно
+}
 
 
-KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092")
-KAFKA_TOPIC_TRADE_PROFIT = os.getenv("KAFKA_TOPIC_TRADE_PROFIT", "trade.profit.detected")
-KAFKA_TOPIC_REPORT_REQUESTED = os.getenv("KAFKA_TOPIC_REPORT_REQUESTED", "report.requested")
-KAFKA_TOPIC_REPORT_COMPLETED = os.getenv("KAFKA_TOPIC_REPORT_COMPLETED", "report.completed")
-KAFKA_TOPIC_DLQ = os.getenv("KAFKA_TOPIC_DLQ", "events.dead")
-
-KAFKA_GROUP_ID = os.getenv("KAFKA_GROUP_ID", "core-consumers")
-KAFKA_CONSUMER_AUTO_OFFSET_RESET = os.getenv("KAFKA_CONSUMER_AUTO_OFFSET_RESET", "earliest")
-KAFKA_IDEMPOTENCY_TTL = int(os.getenv("KAFKA_IDEMPOTENCY_TTL", 24*3600))
+KAFKA_TOPIC_REPORT_REQUESTED = os.getenv("KAFKA_TOPIC_REPORT_REQUESTED")
+KAFKA_TOPIC_REPORT_COMPLETED = os.getenv("KAFKA_TOPIC_REPORT_COMPLETED")
+KAFKA_TOPIC_DLQ = os.getenv("KAFKA_TOPIC_DLQ")
 
 
-REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
+KAFKA_CONSUMER_AUTO_OFFSET_RESET = os.getenv("KAFKA_CONSUMER_AUTO_OFFSET_RESET")
+KAFKA_IDEMPOTENCY_TTL = int(os.getenv("KAFKA_IDEMPOTENCY_TTL", 24 * 3600))
+
+
+REDIS_URL = os.getenv("REDIS_URL")
+
+
+MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT")
+MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY")
+MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY")
+MINIO_BUCKET = os.getenv("MINIO_BUCKET")
+
+
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL")
+CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND")
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TIMEZONE = "UTC"
