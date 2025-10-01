@@ -10,7 +10,7 @@ class Report(models.Model):
 
     class Format(models.TextChoices):
         PDF = "pdf", "PDF"
-        EXCEL = "excel", "Excel"
+        EXCEL = "xlsx", "Excel"
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="reports")
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
